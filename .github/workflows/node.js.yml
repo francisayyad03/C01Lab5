@@ -17,21 +17,37 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x]
-        mongodb-version: ['7.0.5']
+        node-version: [20.x] # Make sure this is a valid version
+        mongodb-version: ['4.4'] # Update this to a valid MongoDB version
 
     steps:
     - uses: actions/checkout@v3
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v2 # Use the correct version of setup-node
       with:
         node-version: ${{ matrix.node-version }}
   
     - name: Start MongoDB
-      uses: supercharge/mongodb-github-action@1.10.0
+      uses: supercharge/mongodb-github-action@1.6.0 # Ensure this action supports the version you need
       with:
         mongodb-version: ${{ matrix.mongodb-version }}
 
-    - run: npm i
-    - run: npm run dev & npm test
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Start server
+      run: npm run dev &
+      env:
+        DB_URI: mongodb://localhost:27017/test # Ensure this is the correct database URI
+
+    - name: Check if server is up
+      run: |
+        echo "Waiting for server to start..."
+        until $(curl --output /dev/null --silent --head --fail http://localhost:4000); do
+          printf '.'
+          sleep 5
+        done
+
+    - name: Run tests
+      run: npm test
